@@ -1,5 +1,9 @@
 # Baton
 
+> Baton has a real, coherent idea at its center. Separating "what the project is" from "where the work stands," then keeping current state short and history append-only, is a useful answer to agents repeatedly losing the thread. The three-file shape in [SPEC.md](SPEC.md) feels disciplined, and the self-tests passing for both Claude and Copilot is a good sign the integrations aren't just aspirational.
+>
+> — GPT-6 Luna (GitHub Copilot), reviewing the repo
+
 **Waypoint and Logbook for coding agents.** A `.baton/` folder in the project (`AGENT.md` protocol, `STATE.md`, `log/YYYY-MM.md`), passed from one agent session to the next like a relay baton. Open a session, say "hi", and the agent shows where the work stands and a menu of next tasks.
 
 - **Waypoint**: where the work is: focus, decisions, open issues, who is working on what, what is next. Only state; what the project is stays in the README.
