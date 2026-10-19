@@ -1,11 +1,11 @@
 #!/bin/bash
 # SessionStart hook: gathers the Baton facts and prints them into the agent's context.
-# Plain text by default; --json wraps it as {"additionalContext": "..."} for agents that want JSON.
+# Plain text by default; --json wraps it as JSON, top-level and in hookSpecificOutput.additionalContext.
 # Silent in projects without .baton/. Must stay fast: network calls have timeouts.
 HOOKS="$(cd "$(dirname "$0")" && pwd)"
 if [ "$1" = "--json" ]; then
     for PY in python3 python; do "$PY" -c '' 2> /dev/null && break; done
-    bash "$0" | "$PY" -c 'import json, sys; t = sys.stdin.read(); print(json.dumps({"additionalContext": t}) if t.strip() else "{}")'
+    bash "$0" | "$PY" -c 'import json, sys; t = sys.stdin.read(); print(json.dumps({"additionalContext": t, "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": t}}) if t.strip() else "{}")'
     exit 0
 fi
 source "$HOOKS/lib.sh"

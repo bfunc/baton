@@ -12,7 +12,7 @@ Each new session starts without memory. Baton is the shortest path to "I know wh
 
 ## Setup
 
-Baton is agent-neutral: the protocol is plain Markdown, the hooks in `hooks/` read the common hook input (`cwd`, `session_id`, `tool_input`, …), and everything agent-specific sits in `agents/<agent>/`: an `agent.conf` (which project files point to the protocol, how the start brief is handed over, where the hooks go) and an `install.sh`. Supported now: `claude` (Claude Code), `copilot` (GitHub Copilot CLI hooks; Copilot in VS Code reads the instruction files).
+Baton is agent-neutral: the protocol is plain Markdown, the hooks in `hooks/` read the common hook input (`cwd`, `session_id`, `tool_input`, …), and everything agent-specific sits in `agents/<agent>/`: an `agent.conf` (which project files point to the protocol, how the start brief is handed over, where the hooks go) and an `install.sh`. Supported now: `claude` (Claude Code) and `copilot`: one hooks file in `~/.copilot/hooks/` serves both Copilot CLI and the Copilot chat in the VS Code sidebar (Agent mode; VS Code hooks are a preview feature, on by default via `chat.useHooks`). If you turn on `chat.useClaudeHooks` in VS Code, it also runs the Claude hooks: install only one of the two for VS Code then.
 
 Needs bash (Git Bash on Windows), git and python 3; `gh` is optional (PRs and CI in the start brief).
 
@@ -23,6 +23,8 @@ bash baton/agents/claude/install.sh <machine-name>
 bash baton/agents/copilot/install.sh <machine-name>
 ```
 Each installer checks the tools, writes the machine name to `~/.baton/machine` (agents sign as `<model>@<machine>#<session>`), installs that agent's hooks (Claude: merged into `~/.claude/settings.json`, backup `settings.json.bak`; Copilot: `~/.copilot/hooks/baton.json`), and runs `selftest.sh <agent>`: a throwaway repo, `init.sh`, then every hook called the way that agent calls it (start brief format, append-only log for both agents' edit fields, stop guard). Anything wrong ends with `ERROR:` and exit 1.
+
+The Copilot installer also runs the exact hook commands through cmd and PowerShell on Windows, and warns when VS Code has hooks switched off. The VS Code chat has no CLI, so its last check is by hand: the installer prints the question to ask in a new chat.
 
 Options: `--project DIR` also runs `init.sh` there; `--live` starts a real non-interactive session of the agent's CLI and checks that the start brief reached it; `--uninstall` removes the hooks. Re-run after moving the folder. If `gh` is not on PATH, put its path in `~/.baton/gh`. Update: `git pull` in the clone; projects get offered the newer `AGENT.md` at session start.
 

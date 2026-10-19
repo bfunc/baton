@@ -9,10 +9,49 @@ source "$HOOKS/lib.sh"
 printf '%s' "$BATON_INPUT" | "$PY" -c '
 import json, os, re, sys
 LOG = r"\.baton/log/[^/\s]+\.md"
+# field names differ by agent and tool
+PATH = ("file_path", "path", "filePath")
+OLD = ("old_string", "old_str", "oldString")
+NEW = ("new_string", "new_str", "newString")
+TEXT = ("content", "file_text")
 
 def bad(msg):
     sys.stderr.write("Baton: .baton/log/ is append-only. " + msg + " Add a new entry at the end instead; fix mistakes with a new entry.\n")
     sys.exit(2)
+
+def get(d, keys, default=None):
+    for k in keys:
+        if k in d:
+            return d[k]
+    return default
+
+def is_log(path):
+    return bool(re.search("/" + LOG + "$", str(path or "").replace("\\", "/")))
+
+def check_patch(text):
+    # a patch as text: no removed lines in a log file
+    if re.search(LOG, text.replace("\\", "/")) and re.search(r"(?m)^-(?!--)", text):
+        bad("This patch removes lines.")
+
+def check_edit(e, path):
+    path = get(e, PATH, path)
+    if not is_log(path) or not os.path.exists(path):
+        return
+    old = open(path, encoding="utf-8").read().rstrip("\n")
+    o, n = get(e, OLD), get(e, NEW)
+    if o is None:
+        text = get(e, TEXT)
+        if text is not None:
+            if not text.startswith(old):
+                bad("This write would change or remove existing lines.")
+        elif "code" in e:
+            bad("This tool rewrites the file.")
+        return
+    n = n or ""
+    if not n.startswith(o):
+        bad("This edit replaces existing text.")
+    if not old.endswith(o.rstrip("\n")):
+        bad("Edits must append after the last line.")
 
 def check(d):
     t = d.get("tool_input") or {}
@@ -20,30 +59,16 @@ def check(d):
         try:
             t = json.loads(t)
         except ValueError:
-            # a patch as text: no removed lines in a log file
-            if re.search(LOG, t.replace("\\", "/")) and re.search(r"(?m)^-(?!--)", t):
-                bad("This patch removes lines.")
-            return
+            return check_patch(t)
     if not isinstance(t, dict):
         return
-    # field names differ by agent: file_path / old_string / new_string / content,
-    # or path / old_str / new_str / file_text
-    path = str(t.get("file_path") or t.get("path") or "").replace("\\", "/")
-    if not re.search("/" + LOG + "$", path) or not os.path.exists(path):
-        return
-    old = open(path, encoding="utf-8").read().rstrip("\n")
-    content = t.get("content", t.get("file_text"))
-    if content is not None and "old_string" not in t and "old_str" not in t:
-        if not content.startswith(old):
-            bad("This write would change or remove existing lines.")
-        return
-    for e in t.get("edits") or [t]:
-        o = e.get("old_string", e.get("old_str", ""))
-        n = e.get("new_string", e.get("new_str", ""))
-        if not n.startswith(o):
-            bad("This edit replaces existing text.")
-        if not old.endswith(o.rstrip("\n")):
-            bad("Edits must append after the last line.")
+    for k in ("input", "patch"):
+        if isinstance(t.get(k), str):
+            check_patch(t[k])
+    path = get(t, PATH)
+    for e in t.get("edits") or t.get("replacements") or [t]:
+        if isinstance(e, dict):
+            check_edit(e, path)
 
 try:
     check(json.load(sys.stdin))

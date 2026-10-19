@@ -2,13 +2,37 @@
   "version": 1,
   "hooks": {
     "SessionStart": [
-      {"type": "command", "bash": "bash '{{BATON}}/hooks/brief.sh' --json", "powershell": "& '{{BASH}}' '{{BATON}}/hooks/brief.sh' --json", "timeoutSec": 30}
+      {
+        "type": "command",
+        "bash": "bash '{{BATON}}/hooks/brief.sh' --json",
+        "powershell": "& '{{BASH}}' '{{BATON}}/hooks/brief.sh' --json",
+        "command": "bash '{{BATON}}/hooks/brief.sh' --json",
+        "windows": "{{WINBASH}} \"{{BATON}}/hooks/brief.sh\" --json",
+        "timeoutSec": 30,
+        "timeout": 30
+      }
     ],
     "PreToolUse": [
-      {"type": "command", "bash": "bash '{{BATON}}/hooks/log-append-only.sh'", "powershell": "& '{{BASH}}' '{{BATON}}/hooks/log-append-only.sh'", "timeoutSec": 10}
+      {
+        "type": "command",
+        "bash": "bash '{{BATON}}/hooks/log-append-only.sh'",
+        "powershell": "& '{{BASH}}' '{{BATON}}/hooks/log-append-only.sh'",
+        "command": "bash '{{BATON}}/hooks/log-append-only.sh'",
+        "windows": "{{WINBASH}} \"{{BATON}}/hooks/log-append-only.sh\"",
+        "timeoutSec": 10,
+        "timeout": 10
+      }
     ],
     "Stop": [
-      {"type": "command", "bash": "bash '{{BATON}}/hooks/stop-guard.sh'", "powershell": "& '{{BASH}}' '{{BATON}}/hooks/stop-guard.sh'", "timeoutSec": 15}
+      {
+        "type": "command",
+        "bash": "bash '{{BATON}}/hooks/stop-guard.sh' --json",
+        "powershell": "& '{{BASH}}' '{{BATON}}/hooks/stop-guard.sh' --json",
+        "command": "bash '{{BATON}}/hooks/stop-guard.sh' --json",
+        "windows": "{{WINBASH}} \"{{BATON}}/hooks/stop-guard.sh\" --json",
+        "timeoutSec": 15,
+        "timeout": 15
+      }
     ]
   }
 }

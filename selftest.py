@@ -37,8 +37,10 @@ code, out, err = run("brief.sh", start, *args)
 text = out
 if fmt == "json":
     try:
-        text = json.loads(out)["additionalContext"]
-        ok("start brief is JSON with additionalContext")
+        j = json.loads(out)
+        text = j["additionalContext"]
+        assert j["hookSpecificOutput"]["additionalContext"] == text
+        ok("start brief is JSON: additionalContext, top-level and in hookSpecificOutput")
     except Exception:
         text = ""
         fail("start brief is not JSON with additionalContext: %r %r" % (out[:200], err[:200]))
@@ -63,6 +65,12 @@ cases = [
     ("rewrite by create (file_text)", 2, {"tool_name": "Write", "tool_input": {"path": log, "file_text": "x"}}),
     ("arguments as a JSON string", 2, {"tool_name": "Edit", "tool_input": json.dumps({"path": log, "old_str": first, "new_str": "x"})}),
     ("patch that removes a log line", 2, {"tool_name": "apply_patch", "tool_input": "*** Update File: .baton/log/%s.md\n-%s\n+x\n" % (month, first)}),
+    ("replace_string_in_file (filePath/oldString/newString)", 2, {"tool_name": "replace_string_in_file", "tool_input": {"filePath": log, "oldString": first, "newString": "x"}}),
+    ("append by replace_string_in_file", 0, {"tool_name": "replace_string_in_file", "tool_input": {"filePath": log, "oldString": last, "newString": last + "\n- more"}}),
+    ("multi_replace_string_in_file", 2, {"tool_name": "multi_replace_string_in_file", "tool_input": {"replacements": [{"filePath": log, "oldString": first, "newString": "x"}]}}),
+    ("create_file over the log", 2, {"tool_name": "create_file", "tool_input": {"filePath": log, "content": "x"}}),
+    ("insert_edit_into_file on the log", 2, {"tool_name": "insert_edit_into_file", "tool_input": {"filePath": log, "code": "x", "explanation": "e"}}),
+    ("apply_patch with input", 2, {"tool_name": "apply_patch", "tool_input": {"input": "*** Update File: .baton/log/%s.md\n-%s\n+x\n" % (month, first)}}),
     ("edit of another file", 0, {"tool_name": "Edit", "tool_input": {"file_path": other, "old_string": "hello", "new_string": "bye"}}),
     ("shell command", 0, {"tool_name": "Bash", "tool_input": {"command": "ls"}}),
     ("unreadable input", 0, "not json"),
@@ -75,20 +83,21 @@ check(open(log, encoding="utf-8").read() == old, "the log guard left the log unt
 
 # Stop: work changed without a log entry -> block once
 stop = {"hook_event_name": "Stop", "session_id": sid, "cwd": proj, "stop_hook_active": False}
-code, out, err = run("stop-guard.sh", stop)
+code, out, err = run("stop-guard.sh", stop, *args)
 check("block" not in out, "stop guard quiet when nothing changed")
 open(other, "a", encoding="utf-8").write("change\n")
-code, out, err = run("stop-guard.sh", stop)
+code, out, err = run("stop-guard.sh", stop, *args)
 try:
-    blocked = json.loads(out).get("decision") == "block"
+    j = json.loads(out)
+    blocked = j.get("decision") == "block" and (fmt != "json" or j["hookSpecificOutput"]["decision"] == "block")
 except Exception:
     blocked = False
 check(blocked, "stop guard blocks: work changed, no log entry" + ("" if blocked else " (got %r)" % out[:200]))
-code, out, err = run("stop-guard.sh", stop)
+code, out, err = run("stop-guard.sh", stop, *args)
 check("block" not in out, "stop guard blocks only once")
 open(log, "a", encoding="utf-8").write("\n### entry\n- Did: test\n")
 open(other, "a", encoding="utf-8").write("change 2\n")
-code, out, err = run("stop-guard.sh", stop)
+code, out, err = run("stop-guard.sh", stop, *args)
 check("block" not in out, "stop guard quiet when the log grew too")
 
 try:
