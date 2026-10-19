@@ -31,8 +31,8 @@ Agents don't open hidden folders on their own (search tools skip them), so add o
 
 Full wording: [AGENT.md](AGENT.md). Files to copy: [template/.baton/](template/.baton/).
 
-## Hooks (optional, Claude Code)
-One copy per machine in user settings, not per project: `brief.sh` (SessionStart: gathers the facts, re-injects STATE after compaction), `stop-guard.sh` (Stop: work changed without a log entry → stop once), `log-append-only.sh` (PreToolUse: logs only grow). Without hooks the protocol still works. Setup: `install.sh`, see [README](README.md#setup).
+## Hooks (optional)
+One copy per machine in user settings, not per project: `brief.sh` (SessionStart: gathers the facts, re-injects STATE after compaction), `stop-guard.sh` (Stop: work changed without a log entry → stop once), `log-append-only.sh` (PreToolUse: logs only grow). Without hooks the protocol still works. Agent-specific parts live in `agents/<agent>/` (`agent.conf` + `install.sh`, which ends with a self-test); see [README](README.md#setup).
 
 ## Rules
 1. **State only.** Link, never copy.

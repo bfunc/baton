@@ -12,32 +12,37 @@ Each new session starts without memory. Baton is the shortest path to "I know wh
 
 ## Setup
 
+Baton is agent-neutral: the protocol is plain Markdown, the hooks in `hooks/` read the common hook input (`cwd`, `session_id`, `tool_input`, …), and everything agent-specific sits in `agents/<agent>/`: an `agent.conf` (which project files point to the protocol, how the start brief is handed over, where the hooks go) and an `install.sh`. Supported now: `claude` (Claude Code), `copilot` (GitHub Copilot CLI hooks; Copilot in VS Code reads the instruction files).
+
 Needs bash (Git Bash on Windows), git and python 3; `gh` is optional (PRs and CI in the start brief).
 
-**On each machine**, once:
+**On each machine**, once per agent:
 ```sh
 git clone https://github.com/bfunc/baton
-bash baton/install.sh <machine-name>
+bash baton/agents/claude/install.sh <machine-name>
+bash baton/agents/copilot/install.sh <machine-name>
 ```
-`install.sh` writes the machine name to `~/.baton/machine` (agents sign log entries as `<model>@<machine>#<session>`) and adds the hooks to `~/.claude/settings.json` (backup in `settings.json.bak`; other hooks and settings are kept). Re-run it after moving the folder; `bash install.sh --uninstall` removes the hooks. If `gh` is not on PATH, put its path in `~/.baton/gh`. Start a new Claude Code session for the hooks to load. Update: `git pull` in the clone; projects get offered the newer `AGENT.md` at session start.
+Each installer checks the tools, writes the machine name to `~/.baton/machine` (agents sign as `<model>@<machine>#<session>`), installs that agent's hooks (Claude: merged into `~/.claude/settings.json`, backup `settings.json.bak`; Copilot: `~/.copilot/hooks/baton.json`), and runs `selftest.sh <agent>`: a throwaway repo, `init.sh`, then every hook called the way that agent calls it (start brief format, append-only log for both agents' edit fields, stop guard). Anything wrong ends with `ERROR:` and exit 1.
+
+Options: `--project DIR` also runs `init.sh` there; `--live` starts a real non-interactive session of the agent's CLI and checks that the start brief reached it; `--uninstall` removes the hooks. Re-run after moving the folder. If `gh` is not on PATH, put its path in `~/.baton/gh`. Update: `git pull` in the clone; projects get offered the newer `AGENT.md` at session start.
 
 **In each project:**
 ```sh
-bash <path-to>/baton/init.sh <project-dir> [project-name]
+bash <path-to>/baton/init.sh <project-dir> [agent ...]     # e.g. init.sh . claude copilot
 ```
-It creates `.baton/` (the `AGENT.md` copy, `STATE.md`, this month's log) and adds `@.baton/AGENT.md` to the project's `CLAUDE.md`; it never overwrites an existing `.baton/`. Then open a session in the project and say hi: the agent fills `STATE.md` from git history and marks guesses `(?)`. For other agents add "Before any work, read and follow .baton/AGENT.md." to `AGENTS.md`. Without the scripts: copy [template/.baton/](template/.baton/) and [AGENT.md](AGENT.md) into `.baton/` by hand.
+It creates `.baton/` (the `AGENT.md` copy, `STATE.md`, this month's log), adds "Before any work, read and follow .baton/AGENT.md." to `AGENTS.md`, and the lines each named agent needs (`CLAUDE.md`: `@.baton/AGENT.md`; `.github/copilot-instructions.md`). It never overwrites. Then open a session and say hi: the agent fills `STATE.md` from git history and marks guesses `(?)`. Commit `.baton/` with the project: it is how the next session, on any machine, picks up the work.
 
-Commit `.baton/` with the project: it is how the next session, on any machine, picks up the work.
+**Another agent:** add `agents/<name>/agent.conf` and `install.sh` (copy the closest one), then `bash selftest.sh <name>`.
 
-## Hooks (Claude Code)
+## Hooks
 
-Without hooks the agent follows AGENT.md by itself. With them the facts are gathered and the rules enforced by code. One copy per machine, not per project; every script exits silently where there is no `.baton/`.
+Without hooks the agent follows AGENT.md by itself. With them the facts are gathered and the rules enforced by code. One copy per machine, not per project; every script stays silent where there is no `.baton/STATE.md`.
 
-| Hook | Script | Does |
+| Event | Script | Does |
 |---|---|---|
-| SessionStart | `hooks/brief.sh` | git fetch, ahead/behind, STATE vs HEAD, stale claims, `(?)`, waiting for you, "not tested", size, secret and injection scan, protocol version, PRs and CI → into the agent's context. After compaction it re-injects STATE |
+| Session start | `hooks/brief.sh` (`--json` for agents that take `{"additionalContext": …}`) | git fetch, ahead/behind, STATE vs HEAD, stale claims, `(?)`, waiting for you, "not tested", size, secret and injection scan, protocol version, PRs and CI → into the agent's context. After compaction it re-injects STATE |
 | Stop | `hooks/stop-guard.sh` | work changed but `log/` didn't → stops the agent once and asks for a log entry |
-| PreToolUse `Edit\|Write\|MultiEdit` | `hooks/log-append-only.sh` | rejects any change to `.baton/log/*.md` that is not an append |
+| Before a tool | `hooks/log-append-only.sh` | rejects any change to `.baton/log/*.md` that is not an append (write, edit or patch); lets everything else through, also when it can't read the input |
 
 ## Where the ideas come from
 
@@ -62,7 +67,7 @@ Deliberately left out:
 
 ## Status
 
-v0.8: `.baton/` folder, install and init scripts, start checks, briefing with menu, playbooks, multi-repo hub, Claude Code hooks. First real use: Midinja. Ideas for later: a Claude Code plugin instead of manual hook setup; a local history index over session transcripts (SQLite FTS5) to bootstrap Decisions; big decisions as ADR files linked from STATE.
+v0.8: `.baton/` folder, per-agent installers with a self-test (Claude Code, GitHub Copilot), start checks, briefing with menu, playbooks, multi-repo hub, Claude Code hooks. First real use: Midinja. Ideas for later: a Claude Code plugin instead of manual hook setup; a local history index over session transcripts (SQLite FTS5) to bootstrap Decisions; big decisions as ADR files linked from STATE.
 
 ## Licence
 

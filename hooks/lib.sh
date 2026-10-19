@@ -3,6 +3,7 @@
 
 # python3 where it works (on Windows "python3" can be a Store stub), else python.
 for PY in python3 python; do "$PY" -c '' 2> /dev/null && break; done
+"$PY" -c '' 2> /dev/null || exit 0   # no python: stay out of the way
 # md5sum (Linux, Git Bash) or md5 (macOS)
 command -v md5sum > /dev/null && MD5=md5sum || MD5="md5 -r"
 
@@ -24,11 +25,12 @@ except Exception:
 ' "$1"
 }
 
-# find_baton <dir>: print the nearest folder upwards that holds .baton/, or fail.
+# find_baton <dir>: print the nearest folder upwards with .baton/STATE.md, or fail
+# (~/.baton/ holds machine settings and is not a project).
 find_baton() {
     local d="$1"
     while [ -n "$d" ]; do
-        [ -d "$d/.baton" ] && { printf '%s' "$d"; return 0; }
+        [ -f "$d/.baton/STATE.md" ] && { printf '%s' "$d"; return 0; }
         local up="$(dirname "$d")"
         [ "$up" = "$d" ] && break
         d="$up"
