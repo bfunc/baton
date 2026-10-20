@@ -46,6 +46,15 @@ parse_args() {
     done
 }
 
+# run_timeout <seconds> <command...>: GNU timeout where there is one (Linux, Git Bash), else python (stock macOS)
+run_timeout() {
+    local s="$1"; shift
+    if command -v timeout > /dev/null; then timeout "$s" "$@"; return; fi
+    "$PY" -c 'import subprocess, sys
+try: sys.exit(subprocess.run(sys.argv[2:], timeout=float(sys.argv[1])).returncode)
+except subprocess.TimeoutExpired: sys.exit(124)' "$s" "$@"
+}
+
 # live_test <agent> <command prefix>: a real non-interactive session in a throwaway project;
 # passes when the agent can quote the signature that only the start hook gives it.
 live_test() {
@@ -58,7 +67,7 @@ live_test() {
         || die "live test: could not set up $t"
     m="$(cat "$HOME/.baton/machine")"
     echo "live test: starting $cmd in $t (up to 5 min)"
-    out="$(cd "$t" && timeout 300 $cmd "Do not use any tools. In the Baton facts given to you at session start there is a line 'Sign log entries and claims as ...'. Reply with that line only, or NONE if you were given no Baton facts." 2>&1)" || true
+    out="$(cd "$t" && run_timeout 300 $cmd "Do not use any tools. In the Baton facts given to you at session start there is a line 'Sign log entries and claims as ...'. Reply with that line only, or NONE if you were given no Baton facts." 2>&1)" || true
     rm -rf "$t"
     if printf '%s' "$out" | grep -qiE "cannot find .*cli|not installed|command not found"; then
         printf '%s\n' "$out" | tail -5 >&2

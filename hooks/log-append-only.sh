@@ -26,7 +26,7 @@ def get(d, keys, default=None):
     return default
 
 def is_log(path):
-    return bool(re.search("/" + LOG + "$", str(path or "").replace("\\", "/")))
+    return bool(re.search("(?:^|/)" + LOG + "$", str(path or "").replace("\\", "/")))
 
 def check_patch(text):
     # a patch as text: no removed lines in a log file
@@ -35,7 +35,10 @@ def check_patch(text):
 
 def check_edit(e, path):
     path = get(e, PATH, path)
-    if not is_log(path) or not os.path.exists(path):
+    if not is_log(path):
+        return
+    path = os.path.join(BASE, path)   # a relative path is relative to the session folder, not to ours
+    if not os.path.exists(path):
         return
     old = open(path, encoding="utf-8").read().rstrip("\n")
     o, n = get(e, OLD), get(e, NEW)
@@ -54,6 +57,8 @@ def check_edit(e, path):
         bad("Edits must append after the last line.")
 
 def check(d):
+    global BASE
+    BASE = d.get("cwd") or os.getcwd()
     t = d.get("tool_input") or {}
     if isinstance(t, str):
         try:

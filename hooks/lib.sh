@@ -7,6 +7,15 @@ for PY in python3 python; do "$PY" -c '' 2> /dev/null && break; done
 # md5sum (Linux, Git Bash) or md5 (macOS)
 command -v md5sum > /dev/null && MD5=md5sum || MD5="md5 -r"
 
+# run_timeout <seconds> <command...>: GNU timeout where there is one (Linux, Git Bash), else python (stock macOS)
+run_timeout() {
+    local s="$1"; shift
+    if command -v timeout > /dev/null; then timeout "$s" "$@"; return; fi
+    "$PY" -c 'import subprocess, sys
+try: sys.exit(subprocess.run(sys.argv[2:], timeout=float(sys.argv[1])).returncode)
+except subprocess.TimeoutExpired: sys.exit(124)' "$s" "$@"
+}
+
 # Read the hook's JSON input once.
 BATON_INPUT="$(cat)"
 

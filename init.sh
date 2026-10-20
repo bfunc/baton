@@ -22,9 +22,10 @@ if [ -d .baton ]; then
 else
     mkdir -p .baton/log
     cp "$SRC/AGENT.md" .baton/AGENT.md
-    sed "s|<Project>|$NAME|" "$SRC/template/.baton/STATE.md" > .baton/STATE.md
+    ESC="$(printf '%s' "$NAME" | sed 's/[|&\\]/\\&/g')"   # | & \ are special in the sed replacement
+    sed "s|<Project>|$ESC|" "$SRC/template/.baton/STATE.md" > .baton/STATE.md
     M="$(date +%Y-%m)"
-    sed -e "s|<Project>|$NAME|" -e "s|YYYY-MM\$|$M|" "$SRC/template/.baton/log/YYYY-MM.md" > ".baton/log/$M.md"
+    sed -e "s|<Project>|$ESC|" -e "s|YYYY-MM\$|$M|" "$SRC/template/.baton/log/YYYY-MM.md" > ".baton/log/$M.md"
     echo "created .baton/"
 fi
 
