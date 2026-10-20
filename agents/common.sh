@@ -30,14 +30,15 @@ native_bash() {
     if command -v cygpath > /dev/null; then cygpath -m "$b"; else printf '%s' "$b"; fi
 }
 
-# parse_args: sets MACHINE, PROJECT, LIVE, UNINSTALL from "[machine] [--project DIR] [--live] [--uninstall]"
+# parse_args: sets MACHINE, PROJECT, LIVE, UNINSTALL, DRY from "[machine] [--project DIR] [--live] [--uninstall] [--dry-run]"
 parse_args() {
-    MACHINE=""; PROJECT=""; LIVE=""; UNINSTALL=""
+    MACHINE=""; PROJECT=""; LIVE=""; UNINSTALL=""; DRY=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --project) PROJECT="$2"; shift ;;
             --live) LIVE=1 ;;
             --uninstall) UNINSTALL=1 ;;
+            --dry-run) DRY=1 ;;
             -*) die "unknown option $1" ;;
             *) MACHINE="$1" ;;
         esac

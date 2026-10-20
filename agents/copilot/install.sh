@@ -2,9 +2,10 @@
 # Baton for GitHub Copilot on this machine: the machine name, the user hooks file, a self-test.
 # One hooks file serves both Copilot CLI and the Copilot chat in VS Code (agent mode, Local),
 # which both read ~/.copilot/hooks/*.json; init.sh writes the instruction files both read.
-# Usage: bash agents/copilot/install.sh [machine] [--project DIR] [--live] [--uninstall]
+# Usage: bash agents/copilot/install.sh [machine] [--project DIR] [--live] [--uninstall] [--dry-run]
 #   --project DIR  also add a Baton to that project (init.sh DIR copilot)
 #   --live         also start a real `copilot -p` session and check that the start brief reaches it
+#   --dry-run      only print what would be written or removed; write nothing
 # Re-run after moving the Baton folder. Exit 1 with ERROR: when something is wrong.
 HERE="$(cd "$(dirname "$0")" && pwd)"
 source "$HERE/../common.sh"
@@ -12,13 +13,16 @@ source "$HERE/agent.conf"
 parse_args "$@"
 need_tools
 
+if [ -n "$DRY" ] && [ -n "$UNINSTALL" ]; then
+    echo "dry run: would remove $HOOKS_FILE$([ -f "$HOOKS_FILE" ] || echo ' (not there)')"; exit 0
+fi
 if [ -n "$UNINSTALL" ]; then
     rm -f "$HOOKS_FILE"
     echo "removed $HOOKS_FILE; ~/.baton kept"
     exit 0
 fi
 
-set_machine "$MACHINE"
+[ -n "$DRY" ] || set_machine "$MACHINE"
 command -v "$CLI" > /dev/null || echo "note: $CLI (Copilot CLI) not found on PATH; the hooks load when it runs"
 
 # bash for cmd or PowerShell (VS Code on Windows): an 8.3 path has no spaces, so it runs in both
@@ -29,10 +33,10 @@ if command -v cygpath > /dev/null; then
 fi
 
 # hooks.json -> the user hooks file, with this folder and this bash filled in
-mkdir -p "$(dirname "$HOOKS_FILE")"
-"$PY" - "$HERE/hooks.json" "$HOOKS_FILE" "$BATON_NATIVE" "$(native_bash)" "$WINBASH" << 'EOF' || die "could not write $HOOKS_FILE"
+[ -n "$DRY" ] || mkdir -p "$(dirname "$HOOKS_FILE")"
+"$PY" - "$HERE/hooks.json" "$HOOKS_FILE" "$BATON_NATIVE" "$(native_bash)" "$WINBASH" "$DRY" << 'EOF' || die "could not write $HOOKS_FILE"
 import json, os, re, sys
-src, dst, base, bash, winbash = sys.argv[1:]
+src, dst, base, bash, winbash, dry = sys.argv[1:]
 text = open(src, encoding="utf-8").read()
 text = text.replace("{{BATON}}", base).replace("{{WINBASH}}", winbash.replace('"', '\\"')).replace("{{BASH}}", bash)
 conf = json.loads(text)
@@ -42,8 +46,13 @@ for ev in ("SessionStart", "PreToolUse", "Stop"):
         for key in ("bash", "powershell", "command", "windows"):
             for p in re.findall(r"['\"]([^'\"]+\.sh)['\"]", h[key]):
                 assert os.path.exists(p), "missing: " + p
-open(dst, "w", encoding="utf-8").write(json.dumps(conf, indent=2) + "\n")
+out = json.dumps(conf, indent=2) + "\n"
+if dry:
+    print("dry run: would write %s%s:\n%s" % (dst, " (replacing it)" if os.path.exists(dst) else "", out))
+else:
+    open(dst, "w", encoding="utf-8").write(out)
 EOF
+[ -n "$DRY" ] && { echo "dry run: nothing written"; exit 0; }
 echo "hooks -> $BATON_NATIVE/hooks, in $HOOKS_FILE"
 
 # on Windows: the exact command strings must run from cmd and from PowerShell

@@ -30,7 +30,7 @@ Each installer checks the tools, writes the machine name to `~/.baton/machine` (
 
 The Copilot installer also runs the exact hook commands through cmd and PowerShell on Windows, and warns when VS Code has hooks switched off. The VS Code chat has no CLI, so its last check is by hand: the installer prints the question to ask in a new chat.
 
-Options: `--project DIR` also runs `init.sh` there; `--live` starts a real non-interactive session of the agent's CLI and checks that the start brief reached it; `--uninstall` removes the hooks. Re-run after moving the folder. If `gh` is not on PATH, put its path in `~/.baton/gh`. Update: `git pull` in the clone; projects get offered the newer `AGENT.md` at session start.
+Options: `--project DIR` also runs `init.sh` there; `--live` starts a real non-interactive session of the agent's CLI and checks that the start brief reached it; `--uninstall` removes the hooks; `--dry-run` prints what would change (for Claude Code a diff of the `hooks` section) and writes nothing. The Claude installer never replaces a settings file that doesn't parse, keeps other tools' hook entries as they are, and warns about entries that are not in Claude Code's hook format (Claude Code skips those without a word). Re-run after moving the folder. If `gh` is not on PATH, put its path in `~/.baton/gh`. Update: `git pull` in the clone; projects get offered the newer `AGENT.md` at session start.
 
 **In each project:**
 ```sh
